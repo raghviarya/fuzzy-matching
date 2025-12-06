@@ -1,7 +1,21 @@
-from openai import OpenAI
-import os
+# tagging.py
+
 import json
+import os
 from typing import List, Optional
+
+from openai import OpenAI
+
+
+def _get_client() -> OpenAI:
+    """Create an OpenAI client using the env var. Raises a clear error if missing."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set. "
+            "Make sure it's in your .env file in the project root."
+        )
+    return OpenAI(api_key=api_key)
 
 
 def build_system_prompt(mapping_labels: List[str], allow_other: bool) -> str:
@@ -42,7 +56,8 @@ def build_user_prompt(
         f"Value to classify: {cell_value!r}\n\n"
         f"Allowed labels: {mapping_labels}\n"
         f"{other_str}\n\n"
-        "Return a JSON object, e.g. {\"tag\": \"...\"} with ONLY one of the allowed labels (or 'Other' when allowed)."
+        "Return a JSON object, e.g. {\"tag\": \"...\"} with ONLY one of the allowed labels "
+        "(or 'Other' when allowed)."
     )
 
 
@@ -54,8 +69,11 @@ def classify_value(
     extra_context: Optional[str],
     model: str = "gpt-4o-mini",
 ) -> str:
-    # Load key at call time, after .env is loaded
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    """
+    Classify a single value into one of mapping_labels (or 'Other' if allow_other=True).
+    Returns the label as a plain string.
+    """
+    client = _get_client()
 
     system_prompt = build_system_prompt(mapping_labels, allow_other)
     user_prompt = build_user_prompt(value, extra_context, column_name, mapping_labels, allow_other)
@@ -71,4 +89,14 @@ def classify_value(
     )
 
     content = response.choices[0].message.content.strip()
-    ...
+
+    try:
+        data = json.loads(content)
+        tag = data.get("tag")
+        if tag not in mapping_labels and not (allow_other and tag == "Other"):
+            # Fallback: if the model misbehaves, just default to the first label
+            return mapping_labels[0]
+        return tag
+    except Exception:
+        # If parsing fails, just default to first label or 'Other' as last resort
+        return "Other" if allow_other else mapping_labels[0]

@@ -1,6 +1,6 @@
 # app.py
+
 import io
-import os
 from typing import List
 
 import pandas as pd
@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 from tagging import classify_value
 
+# Load .env (OPENAI_API_KEY etc.)
 load_dotenv()
-# OpenAI client is instantiated inside tagging.py via environment variable.
 
 st.set_page_config(page_title="Fuzzy Mapper", layout="wide")
 
@@ -87,15 +87,15 @@ else:
 if mapping_labels:
     st.success(f"Loaded {len(mapping_labels)} labels: {mapping_labels}")
 
-# --- Step 2: "Chatbot" parameters ---
-st.subheader("2️⃣ Configure tagging via chatbot-style inputs")
+# --- Step 2: Parameters ---
+st.subheader("2️⃣ Configure tagging")
 
 col1, col2 = st.columns(2)
 
 with col1:
     target_column = st.text_input(
         "Which column in the main Excel should be mapped?",
-        placeholder="e.g. colour_description",
+        placeholder="e.g. colours",
         help="This is the *only required* chatbot field.",
     )
 
@@ -110,11 +110,9 @@ extra_context = st.text_area(
     "Additional context / instructions (optional)",
     placeholder=(
         "Explain what the column represents, any domain rules, or how you'd like "
-        "ambiguous values handled. For example:\n"
-        "- 'This column lists team names in free text; map them to our 5 official divisions.'\n"
-        "- 'If you see anything related to marketing campaigns, map to Marketing.'"
+        "ambiguous values handled."
     ),
-    height=200,
+    height=150,
 )
 
 model_choice = st.selectbox(
@@ -155,11 +153,9 @@ if run_button:
             st.stop()
 
         st.info(
-            "Tagging in progress... For large files, this may take a while since "
-            "we are calling the model once per row in this MVP."
+            "Tagging in progress... For large files, this may take a while in this MVP."
         )
 
-        # Ensure we treat values as strings
         values = df[target_column].astype(str)
 
         mapped_tags = []
@@ -167,21 +163,32 @@ if run_button:
         status_text = st.empty()
 
         total = len(values)
+        had_error = False
 
         for i, val in enumerate(values):
-            tag = classify_value(
-                value=val,
-                mapping_labels=mapping_labels,
-                column_name=target_column,
-                allow_other=allow_other,
-                extra_context=extra_context,
-                model=model_choice,
-            )
+            try:
+                tag = classify_value(
+                    value=val,
+                    mapping_labels=mapping_labels,
+                    column_name=target_column,
+                    allow_other=allow_other,
+                    extra_context=extra_context,
+                    model=model_choice,
+                )
+            except Exception as e:
+                st.error(f"Error when tagging row {i+1}: {e}")
+                had_error = True
+                break
+
             mapped_tags.append(tag)
-            if (i + 1) % 10 == 0 or i == total - 1:
+            if (i + 1) % 5 == 0 or i == total - 1:
                 progress_bar.progress((i + 1) / total)
                 status_text.text(f"Processed {i+1}/{total} rows...")
 
+        if had_error:
+            st.stop()
+
+        # Attach mapped column
         df[new_col_name] = mapped_tags
 
         st.success("✅ Tagging complete!")
