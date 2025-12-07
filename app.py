@@ -176,6 +176,7 @@ if run_button:
                     column_name=target_column,
                     allow_other=allow_other,
                     extra_context=extra_context,
+                    api_key=OPENAI_API_KEY,
                     model=model_choice,
                 )
             except Exception as e:

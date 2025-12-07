@@ -65,7 +65,7 @@ def classify_value(
     column_name: str,
     allow_other: bool,
     extra_context: Optional[str],
-    api_key: str,  # <-- Add this
+    api_key: str,  # <-- this must be here
     model: str = "gpt-4o-mini",
 ) -> str:
     """
