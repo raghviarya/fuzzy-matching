@@ -18,16 +18,19 @@ def _get_client(api_key: str) -> OpenAI:
 
 def build_system_prompt(mapping_labels: List[str], allow_other: bool) -> str:
     base = (
-        "You are a strict classification engine. "
+        "You are a semantic classification engine that performs fuzzy matching. "
         "You receive a single text value from a dataset and must assign it "
-        "to exactly one of the allowed labels.\n\n"
+        "to exactly one of the allowed labels using semantic understanding.\n\n"
         "Rules:\n"
         f"- Allowed labels: {mapping_labels}\n"
         "- Always return a JSON object with the shape: {\"tag\": <one_of_the_labels>}.\n"
+        "- Use semantic matching: consider synonyms, related terms, variations, and conceptual relationships.\n"
+        "- Be generous with matching - prefer mapping to the closest label rather than defaulting to 'Other'.\n"
     )
     if allow_other:
         base += (
-            '- If the value clearly does not fit any label, use "Other".\n'
+            '- Only use "Other" as a LAST RESORT when the value has NO semantic relationship to any label.\n'
+            '- Do NOT use "Other" for synonyms, variations, or related concepts - find the best match instead.\n'
             '- Do NOT invent new labels.\n'
         )
     else:
@@ -47,15 +50,22 @@ def build_user_prompt(
     allow_other: bool,
 ) -> str:
     context_str = f"Additional context from the user:\n{extra_context}\n\n" if extra_context else ""
-    other_str = '"Other" is allowed.' if allow_other else '"Other" is NOT allowed.'
+    if allow_other:
+        other_str = (
+            '"Other" is allowed ONLY as a last resort when there is truly no semantic match. '
+            'Prefer matching to the closest label using synonyms, variations, or related concepts.'
+        )
+    else:
+        other_str = '"Other" is NOT allowed. You must choose one of the allowed labels.'
     return (
         f"You are mapping a value from column '{column_name}'.\n"
         f"{context_str}"
         f"Value to classify: {cell_value!r}\n\n"
         f"Allowed labels: {mapping_labels}\n"
         f"{other_str}\n\n"
-        "Return a JSON object, e.g. {\"tag\": \"...\"} with ONLY one of the allowed labels "
-        "(or 'Other' when allowed)."
+        "Use semantic/fuzzy matching to find the best label. Consider synonyms, related terms, "
+        "and conceptual relationships. Return a JSON object, e.g. {{\"tag\": \"...\"}} with "
+        "ONLY one of the allowed labels (or 'Other' only if truly no match exists)."
     )
 
 
