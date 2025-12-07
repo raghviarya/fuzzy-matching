@@ -132,6 +132,12 @@ new_col_name = st.text_input(
 # --- Step 3: Run tagging ---
 st.subheader("3️⃣ Run mapping")
 
+# Initialize session state for tagged results
+if "tagged_df" not in st.session_state:
+    st.session_state.tagged_df = None
+if "tagging_complete" not in st.session_state:
+    st.session_state.tagging_complete = False
+
 run_button = st.button("🚀 Start tagging", type="primary")
 
 if run_button:
@@ -195,20 +201,28 @@ if run_button:
         # Attach mapped column
         df[new_col_name] = mapped_tags
 
+        # Store results in session state
+        st.session_state.tagged_df = df
+        st.session_state.tagging_complete = True
+
         st.success("✅ Tagging complete!")
 
-        st.subheader("Preview of tagged data")
-        st.dataframe(df.head(20))
+# Display results if tagging is complete (even after re-runs)
+if st.session_state.tagging_complete and st.session_state.tagged_df is not None:
+    df = st.session_state.tagged_df
+    
+    st.subheader("Preview of tagged data")
+    st.dataframe(df.head(20))
 
-        # Create a downloadable Excel
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="TaggedData")
-        output.seek(0)
+    # Create a downloadable Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="TaggedData")
+    output.seek(0)
 
-        st.download_button(
-            label="📥 Download tagged Excel",
-            data=output,
-            file_name="tagged_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+    st.download_button(
+        label="📥 Download tagged Excel",
+        data=output,
+        file_name="tagged_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
