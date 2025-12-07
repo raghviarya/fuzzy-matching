@@ -12,14 +12,14 @@ from tagging import classify_value
 # Load .env (OPENAI_API_KEY etc.)
 load_dotenv()
 
-st.set_page_config(page_title="Fuzzy Mapper", layout="wide")
+st.set_page_config(page_title="Fuzzy Mapping Tool", layout="wide")
 
 st.title("🔎 Fuzzy Mapping Tool")
 
 st.markdown(
     """
-Upload a dataset and a mapping list (e.g. divisions, categories, colours),
-then use GPT-4o to tag each row in your chosen column.
+Upload a dataset and a mapping list (e.g. divisions, categories, renaming),
+then tag each row in your chosen column using the mapping.
 """
 )
 
@@ -27,7 +27,7 @@ then use GPT-4o to tag each row in your chosen column.
 st.subheader("1️⃣ Upload your files")
 
 data_file = st.file_uploader(
-    "Upload your main Excel file",
+    "Upload your main Excel file; include titles for the columns",
     type=["xlsx", "xls"],
     key="data_file",
 )
@@ -42,7 +42,7 @@ mapping_labels: List[str] = []
 
 if mapping_source == "Upload Excel":
     mapping_file = st.file_uploader(
-        "Upload your mapping Excel (one column with labels)",
+        "Upload your mapping Excel (one column with a title)",
         type=["xlsx", "xls"],
         key="mapping_file",
     )
@@ -50,7 +50,7 @@ if mapping_source == "Upload Excel":
     mapping_column_name = st.text_input(
         "Name of the column in the mapping file that contains the labels",
         value="label",
-        help="The column that has your divisions/colours/etc. (e.g. 'division', 'label').",
+        help="The column which has the titles for the mapping labels.",
     )
 
     if mapping_file is not None:
@@ -76,7 +76,6 @@ if mapping_source == "Upload Excel":
 else:
     mapping_text = st.text_area(
         "Paste your mapping list (one label per line)",
-        placeholder="red\nblue\ngreen",
         height=150,
     )
     if mapping_text.strip():
@@ -95,7 +94,6 @@ col1, col2 = st.columns(2)
 with col1:
     target_column = st.text_input(
         "Which column in the main Excel should be mapped?",
-        placeholder="e.g. colours",
         help="This is the *only required* chatbot field.",
     )
 
@@ -107,7 +105,7 @@ with col2:
     )
 
 extra_context = st.text_area(
-    "Additional context / instructions (optional)",
+    "Any additional context / instructions (optional)",
     placeholder=(
         "Explain what the column represents, any domain rules, or how you'd like "
         "ambiguous values handled."
@@ -115,11 +113,8 @@ extra_context = st.text_area(
     height=150,
 )
 
-model_choice = st.selectbox(
-    "Model",
-    ["gpt-4o-mini", "gpt-4o"],
-    help="Use gpt-4o-mini for cheaper, faster tagging; gpt-4o for higher quality.",
-)
+# Model is fixed to gpt-4o-mini
+model_choice = "gpt-4o-mini"
 
 new_col_name = st.text_input(
     "Name of the new mapped column",
@@ -153,7 +148,7 @@ if run_button:
             st.stop()
 
         st.info(
-            "Tagging in progress... For large files, this may take a while in this MVP."
+            "Tagging in progress... This may take a few minutes for large files."
         )
 
         values = df[target_column].astype(str)
