@@ -3,14 +3,22 @@
 import io
 from typing import List
 
+import os
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
 from tagging import classify_value
 
-# Load .env (OPENAI_API_KEY etc.)
+# Load .env for local development
 load_dotenv()
+
+# Try local .env first, then fallback to Streamlit Cloud secrets
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    st.error("Missing OpenAI API key. Please set it in .env or Streamlit Secrets.")
+    st.stop()
 
 st.set_page_config(page_title="Fuzzy Mapping Tool", layout="wide")
 

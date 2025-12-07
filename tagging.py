@@ -7,13 +7,11 @@ from typing import List, Optional
 from openai import OpenAI
 
 
-def _get_client() -> OpenAI:
-    """Create an OpenAI client using the env var. Raises a clear error if missing."""
-    api_key = os.getenv("OPENAI_API_KEY")
+def _get_client(api_key: str) -> OpenAI:
+    """Create an OpenAI client using the provided API key."""
     if not api_key:
         raise RuntimeError(
-            "OPENAI_API_KEY is not set. "
-            "Make sure it's in your .env file in the project root."
+            "OPENAI_API_KEY is missing. Pass it from app.py (env or Streamlit secrets)."
         )
     return OpenAI(api_key=api_key)
 
@@ -67,13 +65,14 @@ def classify_value(
     column_name: str,
     allow_other: bool,
     extra_context: Optional[str],
+    api_key: str,  # <-- Add this
     model: str = "gpt-4o-mini",
 ) -> str:
     """
     Classify a single value into one of mapping_labels (or 'Other' if allow_other=True).
     Returns the label as a plain string.
     """
-    client = _get_client()
+    client = _get_client(api_key)
 
     system_prompt = build_system_prompt(mapping_labels, allow_other)
     user_prompt = build_user_prompt(value, extra_context, column_name, mapping_labels, allow_other)
