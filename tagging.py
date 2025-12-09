@@ -76,7 +76,7 @@ def classify_value(
     allow_other: bool,
     extra_context: Optional[str],
     api_key: str,  # <-- this must be here
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-4o",
 ) -> str:
     """
     Classify a single value into one of mapping_labels (or 'Other' if allow_other=True).
